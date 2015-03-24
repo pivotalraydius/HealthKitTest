@@ -15,7 +15,8 @@
 typedef NS_ENUM(NSInteger, AAPLProfileViewControllerTableViewIndex) {
     AAPLProfileViewControllerTableViewIndexAge = 0,
     AAPLProfileViewControllerTableViewIndexHeight,
-    AAPLProfileViewControllerTableViewIndexWeight
+    AAPLProfileViewControllerTableViewIndexWeight,
+    AAPLProfileViewControllerTableViewIndexHeart
 };
 
 
@@ -276,6 +277,31 @@ typedef NS_ENUM(NSInteger, AAPLProfileViewControllerTableViewIndex) {
     }];
 }
 
+
+
+- (void)saveHeartRateIntoHealthStore:(double)heart {
+    // Save the user's weight into HealthKit.
+    HKUnit *heartUnit = [HKUnit countUnit];
+    heartUnit = [heartUnit unitDividedByUnit:[HKUnit minuteUnit]];
+    
+    HKQuantity *heartQuantity = [HKQuantity quantityWithUnit:heartUnit doubleValue:heart];
+    
+    HKQuantityType *heartRateType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierHeartRate];
+
+    NSDate *now = [NSDate date];
+    
+    HKQuantitySample *heartSample = [HKQuantitySample quantitySampleWithType:heartRateType quantity:heartQuantity startDate:now endDate:now];
+    
+    [self.healthStore saveObject:heartSample withCompletion:^(BOOL success, NSError *error) {
+        if (!success) {
+            NSLog(@"An error occured saving the weight sample %@. In your app, try to handle this gracefully. The error was: %@.", heartSample, error);
+            abort();
+        }
+        
+        [self updateUsersHeartRateLabel];
+    }];
+}
+
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -302,6 +328,13 @@ typedef NS_ENUM(NSInteger, AAPLProfileViewControllerTableViewIndex) {
         
         valueChangedHandler = ^(double value) {
             [self saveWeightIntoHealthStore:value];
+        };
+    }
+    else if (index == AAPLProfileViewControllerTableViewIndexHeart){
+        title = NSLocalizedString(@"Your Heart Rate", nil);
+        
+        valueChangedHandler = ^(double value) {
+            [self saveHeartRateIntoHealthStore:value];
         };
     }
     
